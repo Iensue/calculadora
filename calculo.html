@@ -2,26 +2,28 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Bisseção Mínimo</title>
+    <title>Bisseção com Tabela</title>
     <style>
         body { 
             font-family: Arial, sans-serif; 
             background-color: #f0f0f0;
             display: flex;
             justify-content: center;
+            padding: 20px;
         }
         .container { 
             background-color: #fff;
-            padding: 20px;
+            padding: 25px;
             margin-top: 20px;
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            width: 400px;
+            width: 100%;
+            max-width: 600px;
         }
         input { 
             width: 100%; 
             padding: 8px;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
             box-sizing: border-box;
         }
         button {
@@ -31,13 +33,34 @@
             color: white;
             border: none;
             cursor: pointer;
+            font-size: 16px;
         }
-        #resultado {
-            margin-top: 15px;
+        #resultado-final {
+            margin-top: 20px;
             padding: 10px;
             background-color: #e9ecef;
             border-left: 5px solid #007bff;
             font-weight: bold;
+        }
+        .tabela-container {
+            margin-top: 15px;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+            position: sticky;
+            top: 0;
         }
     </style>
 </head>
@@ -47,20 +70,36 @@
     <h2>Método da Bisseção</h2>
 
     <label for="funcao">Função f(x):</label>
-    <input type="text" id="funcao" value="x**3 - x - 2">
+    <input type="text" id="funcao" value="x**3 - 9*x + 3">
 
     <label for="a">Início do intervalo (a):</label>
-    <input type="number" id="a" value="1">
+    <input type="number" id="a" value="0">
 
     <label for="b">Fim do intervalo (b):</label>
-    <input type="number" id="b" value="2">
+    <input type="number" id="b" value="1">
 
     <label for="precisao">Precisão:</label>
-    <input type="number" id="precisao" value="0.0001">
+    <input type="number" id="precisao" value="0.001">
 
     <button id="calcular">Calcular</button>
 
-    <div id="resultado"></div>
+    <div id="resultado-final"></div>
+    
+    <div class="tabela-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Iteração</th>
+                    <th>a</th>
+                    <th>b</th>
+                    <th>xn</th>
+                    <th>f(xn)</th>
+                    <th>Erro</th>
+                </tr>
+            </thead>
+            <tbody id="tabela-corpo"></tbody>
+        </table>
+    </div>
 </div>
 
 <script>
@@ -69,12 +108,20 @@ document.getElementById('calcular').addEventListener('click', () => {
     let a = parseFloat(document.getElementById('a').value);
     let b = parseFloat(document.getElementById('b').value);
     const precisao = parseFloat(document.getElementById('precisao').value);
-    const resultadoDiv = document.getElementById('resultado');
+    
+    const resultadoDiv = document.getElementById('resultado-final');
+    const tabelaCorpo = document.getElementById('tabela-corpo');
+    tabelaCorpo.innerHTML = '';
+    resultadoDiv.textContent = '';
 
     let f;
     try {
-        const funcaoJS = funcaoStr.replace(/\^/g, '**');
+        let funcaoJS = funcaoStr
+            .replace(/\^/g, '**') 
+            .replace(/(\d)x/g, '$1 * x'); 
+            
         f = new Function('x', `return ${funcaoJS}`);
+        f(0); 
     } catch (e) {
         resultadoDiv.textContent = 'Erro na função. Verifique a sintaxe.';
         return;
@@ -96,12 +143,26 @@ document.getElementById('calcular').addEventListener('click', () => {
     while (iteracoes < MAX_ITERACOES) {
         iteracoes++;
         xn = (a + b) / 2;
+        const fXn = f(xn);
+        const erro = Math.abs(b - a);
 
-        if (Math.abs(b - a) < precisao) {
+        const newRow = `
+            <tr>
+                <td>${iteracoes}</td>
+                <td>${a.toFixed(6)}</td>
+                <td>${b.toFixed(6)}</td>
+                <td>${xn.toFixed(6)}</td>
+                <td>${fXn.toExponential(4)}</td>
+                <td>${erro.toExponential(4)}</td>
+            </tr>
+        `;
+        tabelaCorpo.innerHTML += newRow;
+
+        if (erro < precisao) {
             break;
         }
         
-        if (f(a) * f(xn) < 0) {
+        if (f(a) * fXn < 0) {
             b = xn;
         } else {
             a = xn;
