@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Calculadora de Matriz m x n</title>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; }
+        .container { max-width: 700px; padding: 10px; }
+        .controls { margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+        .controls input { width: 60px; }
+        #actions { margin-bottom: 15px; }
+        #matrix-container { display: grid; gap: 5px; margin-bottom: 15px; }
+        .matrix-input { width: 100%; text-align: center; box-sizing: border-box; }
+        #solve-button { display: none; }
+        #results-container { margin-top: 15px; font-weight: bold; font-size: 1.2em; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Eliminação de Gauss</h1>
+    
+    <div class="controls">
+        <label>(m):</label>
+        <input type="text" id="matrix-rows" value="3" inputmode="numeric">
+        <label>(n):</label>
+        <input type="text" id="matrix-cols" value="3" inputmode="numeric">
+        <button id="generate-matrix-button">Gerar</button>
+    </div>
+
+    <div id="matrix-container"></div>
+    <div id="actions"><button id="solve-button">Resolver</button></div>
+    <div id="results-container"></div>
+</div>
+
+<script>
+    const rowsInput = document.getElementById('matrix-rows');
+    const colsInput = document.getElementById('matrix-cols');
+    const generateButton = document.getElementById('generate-matrix-button');
+    const matrixContainer = document.getElementById('matrix-container');
+    const solveButton = document.getElementById('solve-button');
+    const resultsContainer = document.getElementById('results-container');
+
+    const generateMatrix = () => {
+        const m = parseInt(rowsInput.value), n = parseInt(colsInput.value);
+        if (isNaN(m) || isNaN(n) || m < 1 || n < 1 || m > 10 || n > 10) return;
+
+        matrixContainer.innerHTML = '';
+        resultsContainer.innerHTML = '';
+        matrixContainer.style.gridTemplateColumns = `repeat(${n + 1}, 1fr)`;
+
+        for (let i = 0; i < m; i++) {
+            for (let j = 0; j < n + 1; j++) {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.inputMode = 'decimal';
+                input.className = 'matrix-input';
+                input.id = `cell-${i}-${j}`;
+                matrixContainer.appendChild(input);
+            }
+        }
+        solveButton.style.display = 'block';
+    };
+
+    solveButton.addEventListener('click', () => {
+        const m = parseInt(rowsInput.value), n = parseInt(colsInput.value);
+        const matrix = Array.from({ length: m }, (_, i) => 
+            Array.from({ length: n + 1 }, (__, j) => 
+                parseFloat(document.getElementById(`cell-${i}-${j}`).value) || 0
+            )
+        );
+
+        for (let k = 0; k < Math.min(m, n); k++) {
+            let maxRow = k;
+            for (let i = k + 1; i < m; i++) {
+                if (Math.abs(matrix[i][k]) > Math.abs(matrix[maxRow][k])) maxRow = i;
+            }
+            [matrix[k], matrix[maxRow]] = [matrix[maxRow], matrix[k]];
+
+            if (Math.abs(matrix[k][k]) < 1e-9) continue;
+
+            for (let i = k + 1; i < m; i++) {
+                const mult = matrix[i][k] / matrix[k][k];
+                for (let j = k; j < n + 1; j++) matrix[i][j] -= mult * matrix[k][j];
+            }
+        }
+
+        let rank = 0;
+        for (let i = 0; i < m; i++) {
+            const isZeroRow = matrix[i].slice(0, n).every(c => Math.abs(c) < 1e-9);
+            if (isZeroRow && Math.abs(matrix[i][n]) > 1e-9) {
+                resultsContainer.innerHTML = "Sistema sem solução (inconsistente).";
+                return;
+            }
+            if (!isZeroRow) rank++;
+        }
+
+        if (rank < n) {
+            resultsContainer.innerHTML = "O sistema possui infinitas soluções.";
+            return;
+        }
+
+        const solution = new Array(n);
+        for (let i = n - 1; i >= 0; i--) {
+            let sum = 0;
+            for (let j = i + 1; j < n; j++) sum += matrix[i][j] * solution[j];
+            if (Math.abs(matrix[i][i]) < 1e-9) {
+                resultsContainer.innerHTML = "Sistema sem solução única.";
+                return;
+            }
+            solution[i] = (matrix[i][n] - sum) / matrix[i][i];
+        }
+        
+        resultsContainer.innerHTML = solution.map((val, i) => `x<sub>${i + 1}</sub> = ${val.toFixed(4)}`).join('<br>');
+    });
+
+    generateButton.addEventListener('click', generateMatrix);
+    generateMatrix();
+</script>
+
+</body>
+</html>
