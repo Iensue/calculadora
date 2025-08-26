@@ -2,28 +2,33 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>Calculadora de Matriz m x n</title>
+    <title>Calculadora de Matriz com Todas as Etapas do Escalonamento</title>
     <style>
         body { font-family: sans-serif; display: flex; justify-content: center; }
         .container { max-width: 700px; padding: 10px; }
         .controls { margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
         .controls input { width: 60px; }
-        #actions { margin-bottom: 15px; }
         #matrix-container { display: grid; gap: 5px; margin-bottom: 15px; }
         .matrix-input { width: 100%; text-align: center; box-sizing: border-box; }
         #solve-button { display: none; }
-        #results-container { margin-top: 15px; font-weight: bold; font-size: 1.2em; text-align: center; }
+        #results-container { margin-top: 15px; width: 100%; }
+        .result-section { margin-bottom: 20px; }
+        .result-section h2 { margin-bottom: 10px; text-align: center; font-size: 1.1em; color: #0056b3; }
+        .result-section p { text-align: center; font-family: monospace; font-size: 1.1em; margin-bottom: 5px;}
+        .result-section table { margin: 0 auto; border-collapse: collapse; }
+        .result-section td { border: 1px solid #ccc; padding: 8px; text-align: center; min-width: 60px; }
+        .final-solution { font-weight: bold; font-size: 1.2em; text-align: center; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Eliminação de Gauss</h1>
+    <h1>Eliminação Gaussiana Detalhada</h1>
     
     <div class="controls">
-        <label>(m):</label>
+        <label>Equações (m):</label>
         <input type="text" id="matrix-rows" value="3" inputmode="numeric">
-        <label>(n):</label>
+        <label>Variáveis (n):</label>
         <input type="text" id="matrix-cols" value="3" inputmode="numeric">
         <button id="generate-matrix-button">Gerar</button>
     </div>
@@ -62,7 +67,21 @@
         solveButton.style.display = 'block';
     };
 
+    const matrixToHtmlTable = (matrix) => {
+        let html = '<table>';
+        matrix.forEach(row => {
+            html += '<tr>';
+            row.forEach(cell => {
+                html += `<td>${cell.toFixed(4)}</td>`;
+            });
+            html += '</tr>';
+        });
+        html += '</table>';
+        return html;
+    };
+
     solveButton.addEventListener('click', () => {
+        resultsContainer.innerHTML = '';
         const m = parseInt(rowsInput.value), n = parseInt(colsInput.value);
         const matrix = Array.from({ length: m }, (_, i) => 
             Array.from({ length: n + 1 }, (__, j) => 
@@ -70,33 +89,45 @@
             )
         );
 
+        let stepsHtml = '';
+
         for (let k = 0; k < Math.min(m, n); k++) {
             let maxRow = k;
             for (let i = k + 1; i < m; i++) {
                 if (Math.abs(matrix[i][k]) > Math.abs(matrix[maxRow][k])) maxRow = i;
             }
-            [matrix[k], matrix[maxRow]] = [matrix[maxRow], matrix[k]];
+            if(maxRow !== k) {
+                [matrix[k], matrix[maxRow]] = [matrix[maxRow], matrix[k]];
+                 stepsHtml += `<div class="result-section"><p>Pivoteamento: Trocando L<sub>${k+1}</sub> com L<sub>${maxRow+1}</sub></p>${matrixToHtmlTable(matrix)}</div>`;
+            }
 
             if (Math.abs(matrix[k][k]) < 1e-9) continue;
 
             for (let i = k + 1; i < m; i++) {
                 const mult = matrix[i][k] / matrix[k][k];
-                for (let j = k; j < n + 1; j++) matrix[i][j] -= mult * matrix[k][j];
+                if (Math.abs(mult) < 1e-9) continue; // Pula se o multiplicador for zero
+                for (let j = k; j < n + 1; j++) {
+                    matrix[i][j] -= mult * matrix[k][j];
+                }
+                stepsHtml += `<div class="result-section"><p>L<sub>${i+1}</sub> = L<sub>${i+1}</sub> - (${mult.toFixed(4)}) * L<sub>${k+1}</sub></p>${matrixToHtmlTable(matrix)}</div>`;
             }
         }
+
+        resultsContainer.innerHTML = stepsHtml;
+        const echelonHtml = `<div class="result-section"><h2>Matriz Escalonada</h2>${matrixToHtmlTable(matrix)}</div>`;
 
         let rank = 0;
         for (let i = 0; i < m; i++) {
             const isZeroRow = matrix[i].slice(0, n).every(c => Math.abs(c) < 1e-9);
             if (isZeroRow && Math.abs(matrix[i][n]) > 1e-9) {
-                resultsContainer.innerHTML = "Sistema sem solução (inconsistente).";
+                resultsContainer.innerHTML += echelonHtml + '<div class="final-solution">Sistema sem solução (inconsistente).</div>';
                 return;
             }
             if (!isZeroRow) rank++;
         }
 
         if (rank < n) {
-            resultsContainer.innerHTML = "O sistema possui infinitas soluções.";
+            resultsContainer.innerHTML += echelonHtml + '<div class="final-solution">O sistema possui infinitas soluções.</div>';
             return;
         }
 
@@ -105,13 +136,14 @@
             let sum = 0;
             for (let j = i + 1; j < n; j++) sum += matrix[i][j] * solution[j];
             if (Math.abs(matrix[i][i]) < 1e-9) {
-                resultsContainer.innerHTML = "Sistema sem solução única.";
+                resultsContainer.innerHTML += echelonHtml + '<div class="final-solution">Sistema sem solução única.</div>';
                 return;
             }
             solution[i] = (matrix[i][n] - sum) / matrix[i][i];
         }
         
-        resultsContainer.innerHTML = solution.map((val, i) => `x<sub>${i + 1}</sub> = ${val.toFixed(4)}`).join('<br>');
+        const solutionHtml = `<div class="result-section"><h2>Solução Final</h2><div class="final-solution">${solution.map((val, i) => `x<sub>${i + 1}</sub> = ${val.toFixed(4)}`).join('<br>')}</div></div>`;
+        resultsContainer.innerHTML += echelonHtml + solutionHtml;
     });
 
     generateButton.addEventListener('click', generateMatrix);
